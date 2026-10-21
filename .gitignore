@@ -1,0 +1,30 @@
+# Gradle / Android Studio
+.gradle/
+.kotlin/
+build/
+/local.properties
+.idea/
+*.iml
+captures/
+.cxx/
+.externalNativeBuild/
+.DS_Store
+
+# Secrets : jamais commités (fournis via les secrets GitHub / wrangler secret)
+google-services.json
+*.jks
+*.keystore
+*.p12
+*.pem
+keystore.properties
+*service-account*.json
+*serviceAccount*.json
+firebase-adminsdk*.json
+.dev.vars
+.env
+.env.*
+
+# Worker
+worker/node_modules/
+worker/.wrangler/
+worker/dist/
