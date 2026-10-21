@@ -123,6 +123,14 @@ internal fun WidgetContent(state: WidgetUiState) {
                         maxLines = 1,
                     )
                     StatusLine(state, fontSize = if (large) 18.sp else 15.sp, alignment = TextAlign.Start)
+                    val message = state.lastReceived?.message
+                    if (large && message != null && state.status == WidgetStatus.Idle) {
+                        Text(
+                            text = context.getString(R.string.quoted, message),
+                            style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 13.sp),
+                            maxLines = 2,
+                        )
+                    }
                 }
             }
             else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {

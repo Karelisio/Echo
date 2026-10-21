@@ -10,8 +10,8 @@ class HistoryRepository(private val dao: EchoDao) {
 
     suspend fun lastReceivedNow(): EchoEvent? = dao.lastReceived()
 
-    suspend fun record(direction: EchoDirection, emoji: String, pattern: String, timestamp: Long) {
-        dao.insert(EchoEvent(direction = direction, emoji = emoji, pattern = pattern, timestamp = timestamp))
+    suspend fun record(direction: EchoDirection, emoji: String, pattern: String, timestamp: Long, message: String? = null) {
+        dao.insert(EchoEvent(direction = direction, emoji = emoji, pattern = pattern, timestamp = timestamp, message = message))
         dao.trimTo(MAX_STORED)
     }
 

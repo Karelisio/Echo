@@ -1,6 +1,7 @@
 package com.karelisio.echo.data.history
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -22,6 +23,8 @@ data class EchoEvent(
     /** Identifiant du motif de vibration (voir VibrationPattern). */
     val pattern: String,
     val timestamp: Long,
+    /** Phrase accompagnant l'écho (base v2) ; `null` = phrase par défaut. */
+    val message: String? = null,
 )
 
 @Dao
@@ -48,7 +51,7 @@ interface EchoDao {
     suspend fun trimTo(keep: Int)
 }
 
-@Database(entities = [EchoEvent::class], version = 1)
+@Database(entities = [EchoEvent::class], version = 2, autoMigrations = [AutoMigration(from = 1, to = 2)])
 abstract class EchoDatabase : RoomDatabase() {
     abstract fun echoDao(): EchoDao
 

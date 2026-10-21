@@ -16,6 +16,8 @@ import com.karelisio.echo.echo.EchoReceiver
 import com.karelisio.echo.echo.EchoSender
 import com.karelisio.echo.fcm.TokenSyncWorker
 import com.karelisio.echo.notification.EchoNotifications
+import com.karelisio.echo.update.UpdateCheckWorker
+import com.karelisio.echo.update.UpdateManager
 import com.karelisio.echo.vibration.EchoVibrator
 import com.karelisio.echo.widget.WidgetController
 import java.util.concurrent.TimeUnit
@@ -41,6 +43,7 @@ class AppContainer(
     settingsDataStore: DataStore<Preferences>? = null,
     database: (() -> EchoDatabase)? = null,
     relayUrl: String = BuildConfig.RELAY_URL,
+    updateUrl: String = BuildConfig.UPDATE_URL,
 ) {
 
     val context: Context = context.applicationContext
@@ -61,13 +64,25 @@ class AppContainer(
     val pairingStore by lazy { pairingPreferences?.let(::PairingStore) ?: PairingStore.create(this.context) }
     val history by lazy { HistoryRepository((database?.invoke() ?: EchoDatabase.build(this.context)).echoDao()) }
 
-    val relay by lazy {
-        val http = OkHttpClient.Builder()
+    /** Client HTTP commun (connexions partagées) ; chaque usage précise ses délais. */
+    private val http by lazy {
+        OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
-            .callTimeout(20, TimeUnit.SECONDS)
             .build()
-        RelayClient(relayUrl, http, json)
+    }
+
+    val relay by lazy { RelayClient(relayUrl, http.newBuilder().callTimeout(20, TimeUnit.SECONDS).build(), json) }
+
+    val updates by lazy {
+        UpdateManager(
+            context = this.context,
+            http = http.newBuilder().readTimeout(30, TimeUnit.SECONDS).build(),
+            json = json,
+            updateUrl = updateUrl,
+            currentVersionCode = BuildConfig.VERSION_CODE.toLong(),
+            scope = appScope,
+        )
     }
 
     val pairing by lazy { PairingRepository(pairingStore, relay, settings) }
@@ -87,6 +102,8 @@ class AppContainer(
         pairingStore.ensureLoaded()
         TokenSyncWorker.enqueue(context)
         widget.refresh()
+        updates.cleanup()
+        if (updates.isEnabled) UpdateCheckWorker.schedule(context)
     }
 
     /**

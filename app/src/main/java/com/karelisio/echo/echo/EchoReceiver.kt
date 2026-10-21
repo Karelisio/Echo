@@ -40,6 +40,7 @@ class EchoReceiver(
         val sentAt = data["sentAt"]?.toLongOrNull()?.coerceAtMost(now) ?: now
         val emoji = sanitizeEmoji(data["emoji"])
         val pattern = VibrationPattern.fromId(data["pattern"])
+        val message = EchoMessage.clean(data["text"], EchoMessage.MAX_RECEIVED_LENGTH)
         val current = settings.current()
 
         // La vibration d'abord : c'est l'essentiel, et elle doit partir même si la suite échoue.
@@ -54,8 +55,8 @@ class EchoReceiver(
         // L'autre a déjà envoyé un écho : l'appairage est forcément finalisé côté relais.
         if (state is PairingState.Pending) store.markPaired(credentials.pairId, now)
 
-        history.record(EchoDirection.RECEIVED, emoji, pattern.id, sentAt)
-        notifications.showEcho(emoji, current.partnerName, sentAt)
+        history.record(EchoDirection.RECEIVED, emoji, pattern.id, sentAt, message)
+        notifications.showEcho(emoji, current.partnerName, sentAt, message)
         widget.refresh()
     }
 

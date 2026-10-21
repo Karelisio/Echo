@@ -8,6 +8,8 @@ const PENDING_TTL_SECONDS = 600;
 const ABANDONED_PAIR_TTL_SECONDS = 7 * 24 * 3600;
 const MAX_BODY_BYTES = 4096;
 const MAX_SELF_TEST_DELAY_SECONDS = 20;
+/** Phrase affichée dans la notification de l'autre (l'appli en limite la saisie à 120 caractères). */
+const MAX_TEXT_LENGTH = 200;
 
 const TOKEN_REGEX = /^[A-Za-z0-9_:.-]{20,4096}$/;
 const PAIR_ID_REGEX = /^[A-Za-z0-9_-]{16,64}$/;
@@ -179,6 +181,7 @@ async function ping({ request, env, ctx, body }: RouteContext): Promise<Response
   }
   const emoji = parseEmoji(body.emoji);
   const pattern = parsePattern(body.pattern);
+  const text = parseText(body.text);
   const sentAt = Date.now();
 
   if (body.target === "self") {
@@ -200,7 +203,7 @@ async function ping({ request, env, ctx, body }: RouteContext): Promise<Response
     env,
     partner.token,
     // « from » est une clé réservée par FCM : l'expéditeur s'appelle « sender ».
-    { type: "echo", pairId, emoji, pattern, sentAt: String(sentAt), sender: role },
+    { type: "echo", pairId, emoji, pattern, sentAt: String(sentAt), sender: role, ...(text ? { text } : {}) },
     ECHO_FCM,
   );
   assertDelivered(result, "partner_unreachable");
@@ -322,6 +325,15 @@ function parsePattern(value: unknown): string {
     throw new HttpError(400, "bad_request", "Motif de vibration invalide");
   }
   return value;
+}
+
+/** Phrase facultative ; absente ou vide, l'autre téléphone affiche sa phrase par défaut. */
+function parseText(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string" || value.length > MAX_TEXT_LENGTH || CONTROL_CHARS.test(value)) {
+    throw new HttpError(400, "bad_request", "Message invalide");
+  }
+  return value.trim() || undefined;
 }
 
 function parseDelay(value: unknown): number {

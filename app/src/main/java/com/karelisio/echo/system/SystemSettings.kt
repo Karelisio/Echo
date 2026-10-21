@@ -94,6 +94,13 @@ object SystemSettings {
 
     fun openAppDetails(context: Context) = context.startFirst(appDetails(context))
 
+    /** Autorisation « Installer des applis inconnues » d'Écho, nécessaire aux mises à jour in-app. */
+    fun openInstallPermission(context: Context) = context.startFirst(
+        Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, "package:${context.packageName}".toUri()),
+        Intent(Settings.ACTION_SECURITY_SETTINGS),
+        appDetails(context),
+    )
+
     private fun appDetails(context: Context) =
         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:${context.packageName}".toUri())
 

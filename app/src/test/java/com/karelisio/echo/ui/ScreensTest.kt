@@ -16,6 +16,7 @@ import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.karelisio.echo.AppContainer
@@ -131,6 +132,22 @@ class ScreensTest {
         click("Mon téléphone ne vibre pas")
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("1. Lancement des applications"))
         compose.onNodeWithText("1. Lancement des applications").assertExists()
+    }
+
+    @Test
+    fun phrasePersonnaliseeEnregistree() {
+        runBlocking { container.settings.setOnboardingDone() }
+        container.pairingStore.savePaired(PairCredentials("pair-de-test-0123456789", "secret", "a"), System.currentTimeMillis())
+        showApp()
+        waitForText("Touche pour envoyer un écho")
+
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Tu me manques"))
+        click("Tu me manques")
+        compose.waitUntil(TIMEOUT_MS) { runBlocking { container.settings.current().message } == "Tu me manques" }
+
+        // Saisie libre : sur une seule ligne, enregistrée sans les espaces superflus.
+        compose.onNode(hasSetTextAction()).performTextReplacement("  Bonne\nnuit  ")
+        compose.waitUntil(TIMEOUT_MS) { runBlocking { container.settings.current().message } == "Bonne nuit" }
     }
 
     @Test

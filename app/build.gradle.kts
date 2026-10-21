@@ -23,6 +23,15 @@ val relayUrl: String = (
         ?: ""
     ).trim().trimEnd('/')
 
+// update.json de la dernière release GitHub (mises à jour in-app) : -PechoUpdateUrl=…,
+// ECHO_UPDATE_URL ou « echo.updateUrl=… » ; une valeur vide désactive les mises à jour.
+val updateUrl: String = (
+    providers.gradleProperty("echoUpdateUrl").orNull
+        ?: providers.environmentVariable("ECHO_UPDATE_URL").orNull
+        ?: localProperties.getProperty("echo.updateUrl")
+        ?: "https://github.com/Karelisio/Echo/releases/latest/download/update.json"
+    ).trim()
+
 // Signature release : fournie par la CI (secrets GitHub) ou en local via les mêmes variables.
 val keystorePath: String? = providers.environmentVariable("ECHO_KEYSTORE_FILE").orNull
 
@@ -37,6 +46,7 @@ android {
         versionCode = providers.environmentVariable("ECHO_VERSION_CODE").orNull?.toIntOrNull() ?: 1
         versionName = providers.environmentVariable("ECHO_VERSION_NAME").orNull ?: "1.0.0"
         buildConfigField("String", "RELAY_URL", "\"$relayUrl\"")
+        buildConfigField("String", "UPDATE_URL", "\"$updateUrl\"")
     }
 
     signingConfigs {

@@ -1,21 +1,16 @@
 package com.karelisio.echo.data.relay
 
 import com.karelisio.echo.data.pairing.PairCredentials
+import com.karelisio.echo.util.await
 import java.io.IOException
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import okhttp3.Call
-import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.Response
 
 @Serializable
 data class CreatePairResponse(val pairId: String, val secret: String, val role: String, val code: String, val expiresAt: Long)
@@ -39,7 +34,13 @@ private data class TokenBody(val token: String)
 private data class JoinBody(val code: String, val token: String)
 
 @Serializable
-private data class PingBody(val emoji: String, val pattern: String, val target: String? = null, val delay: Int? = null)
+private data class PingBody(
+    val emoji: String,
+    val pattern: String,
+    val text: String? = null,
+    val target: String? = null,
+    val delay: Int? = null,
+)
 
 @Serializable
 private class EmptyBody
@@ -83,8 +84,9 @@ class RelayClient(baseUrl: String, private val http: OkHttpClient, private val j
         post<TokenBody, Unit>("/token/update", TokenBody(fcmToken), credentials)
     }
 
-    suspend fun ping(credentials: PairCredentials, emoji: String, pattern: String): PingResponse =
-        post("/ping", PingBody(emoji, pattern), credentials)
+    /** Écho pour l'autre téléphone ; [text] s'affiche dans sa notification (phrase par défaut si `null`). */
+    suspend fun ping(credentials: PairCredentials, emoji: String, pattern: String, text: String? = null): PingResponse =
+        post("/ping", PingBody(emoji, pattern, text), credentials)
 
     /** Écho de test renvoyé à ce même téléphone, éventuellement différé de [delaySeconds]. */
     suspend fun pingSelf(credentials: PairCredentials, emoji: String, pattern: String, delaySeconds: Int): PingResponse =
@@ -131,20 +133,4 @@ class RelayClient(baseUrl: String, private val http: OkHttpClient, private val j
     private companion object {
         val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
     }
-}
-
-/** Exécution asynchrone annulable : annuler la coroutine annule la requête HTTP. */
-private suspend fun Call.await(): Response = suspendCancellableCoroutine { continuation ->
-    continuation.invokeOnCancellation { cancel() }
-    enqueue(
-        object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                continuation.resumeWithException(e)
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                continuation.resume(response) { _, value, _ -> value.close() }
-            }
-        },
-    )
 }

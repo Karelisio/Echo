@@ -29,8 +29,9 @@ class TestEchoApp : EchoApp() {
             File(filesDir, "settings-${System.nanoTime()}.preferences_pb")
         },
         database = { Room.inMemoryDatabaseBuilder(this, EchoDatabase::class.java).build() },
-        // Jamais de vrai réseau dans les tests, quelle que soit la variable ECHO_RELAY_URL du build.
+        // Jamais de vrai réseau dans les tests, quelles que soient les URL configurées pour le build.
         relayUrl = "",
+        updateUrl = "",
     )
 
     override val runsStartupWork = false

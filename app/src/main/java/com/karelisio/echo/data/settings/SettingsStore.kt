@@ -6,9 +6,11 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.karelisio.echo.echo.EchoMessage
 import com.karelisio.echo.vibration.VibrationPattern
 import java.io.IOException
 import kotlinx.coroutines.flow.Flow
@@ -21,6 +23,8 @@ private val Context.dataStore by preferencesDataStore(name = "settings")
 data class EchoSettings(
     val emoji: String = DEFAULT_EMOJI,
     val pattern: VibrationPattern = VibrationPattern.Default,
+    /** Phrase envoyée avec chaque écho ; vide = phrase par défaut chez l'autre. */
+    val message: String = "",
     /** Vibrer même en mode silencieux / Ne pas déranger (usage « alarme »). */
     val vibrateInDnd: Boolean = true,
     /** Surnom local de l'autre personne, affiché dans les notifications. */
@@ -46,6 +50,11 @@ class SettingsStore(private val store: DataStore<Preferences>) {
     suspend fun setEmoji(emoji: String) = store.edit { it[EMOJI] = emoji }
 
     suspend fun setPattern(pattern: VibrationPattern) = store.edit { it[PATTERN] = pattern.id }
+
+    suspend fun setMessage(text: String) = store.edit { prefs ->
+        val cleaned = EchoMessage.clean(text)
+        if (cleaned == null) prefs.remove(MESSAGE) else prefs[MESSAGE] = cleaned
+    }
 
     suspend fun setVibrateInDnd(enabled: Boolean) = store.edit { it[VIBRATE_IN_DND] = enabled }
 
@@ -81,6 +90,21 @@ class SettingsStore(private val store: DataStore<Preferences>) {
         return remaining
     }
 
+    /**
+     * Note qu'une notification a été affichée pour la version [versionCode].
+     * @return `true` si c'est la première fois pour cette version (ou une plus récente).
+     */
+    suspend fun markUpdateNotified(versionCode: Int): Boolean {
+        var first = false
+        store.edit { prefs ->
+            if ((prefs[UPDATE_NOTIFIED] ?: 0) < versionCode) {
+                prefs[UPDATE_NOTIFIED] = versionCode
+                first = true
+            }
+        }
+        return first
+    }
+
     /** Libère un créneau réservé par [tryReserveSend] (envoi échoué : on peut réessayer tout de suite). */
     suspend fun releaseSend(reservedAt: Long) = store.edit { prefs ->
         if (prefs[LAST_SENT_AT] == reservedAt) prefs.remove(LAST_SENT_AT)
@@ -93,6 +117,7 @@ class SettingsStore(private val store: DataStore<Preferences>) {
     private fun Preferences.toSettings() = EchoSettings(
         emoji = this[EMOJI] ?: EchoSettings.DEFAULT_EMOJI,
         pattern = VibrationPattern.fromId(this[PATTERN]),
+        message = this[MESSAGE].orEmpty(),
         vibrateInDnd = this[VIBRATE_IN_DND] ?: true,
         partnerName = this[PARTNER_NAME].orEmpty(),
         onboardingDone = this[ONBOARDING_DONE] ?: false,
@@ -106,11 +131,13 @@ class SettingsStore(private val store: DataStore<Preferences>) {
         private const val MAX_NAME_LENGTH = 30
         private val EMOJI = stringPreferencesKey("emoji")
         private val PATTERN = stringPreferencesKey("pattern")
+        private val MESSAGE = stringPreferencesKey("message")
         private val VIBRATE_IN_DND = booleanPreferencesKey("vibrate_in_dnd")
         private val PARTNER_NAME = stringPreferencesKey("partner_name")
         private val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         private val REGISTERED_TOKEN = stringPreferencesKey("registered_token")
         private val TOKEN_SYNCED_AT = longPreferencesKey("token_synced_at")
         private val LAST_SENT_AT = longPreferencesKey("last_sent_at")
+        private val UPDATE_NOTIFIED = intPreferencesKey("update_notified_code")
     }
 }
