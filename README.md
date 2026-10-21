@@ -43,21 +43,21 @@ Il faut : un compte Google (Firebase), un compte Cloudflare (offre gratuite suff
 
 ### 3. Déployer le relais (Cloudflare Worker)
 
+Depuis un ordinateur avec Node.js 22+ :
+
 ```bash
 cd worker
 npm ci
-npx wrangler login
-
-# Espace KV : copier l'« id » affiché dans wrangler.toml (à la place de REMPLACER_PAR_ID_KV)
-npx wrangler kv namespace create ECHO_KV
+npx wrangler login      # ouvre le navigateur pour se connecter à Cloudflare
+npx wrangler deploy     # crée aussi l'espace KV au premier déploiement
 
 # Compte de service Firebase, stocké comme secret du Worker (jamais dans le code)
 npx wrangler secret put FIREBASE_SERVICE_ACCOUNT < /chemin/vers/compte-de-service.json
-
-npx wrangler deploy
+# Windows PowerShell :
+# Get-Content C:\chemin\vers\compte-de-service.json -Raw | npx wrangler secret put FIREBASE_SERVICE_ACCOUNT
 ```
 
-`wrangler deploy` affiche l'URL du relais, par exemple `https://echo-relay.<votre-sous-domaine>.workers.dev`. Vérification :
+`wrangler deploy` affiche l'URL du relais : `https://echo-relay.<votre-sous-domaine>.workers.dev`, où `echo-relay` est le nom du Worker (`worker/wrangler.toml`) et `<votre-sous-domaine>` le sous-domaine `workers.dev` de votre compte Cloudflare (choisi au premier déploiement, visible dans *Workers & Pages*). Vérification :
 
 ```bash
 curl https://echo-relay.<votre-sous-domaine>.workers.dev/health

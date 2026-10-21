@@ -3,12 +3,10 @@ main = "src/index.ts"
 compatibility_date = "2026-10-01"
 workers_dev = true
 
-# Stockage des paires et du jeton OAuth en cache.
-# Créer le namespace avec : npx wrangler kv namespace create ECHO_KV
-# puis remplacer l'id ci-dessous par celui affiché.
+# Stockage des paires et du jeton OAuth en cache. Sans « id », wrangler crée l'espace KV
+# au premier déploiement puis le réutilise (provisionnement automatique).
 [[kv_namespaces]]
 binding = "ECHO_KV"
-id = "REMPLACER_PAR_ID_KV"
 
 # Limitation de débit native de Cloudflare (gratuite, appliquée par point de présence).
 # Envois d’échos : 40 par minute et par paire (l’appli impose déjà 5 s entre deux envois par téléphone).
