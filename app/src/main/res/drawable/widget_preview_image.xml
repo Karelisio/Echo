@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Aperçu du widget pour les lanceurs antérieurs à Android 12. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="110dp"
+    android:height="110dp"
+    android:viewportWidth="110"
+    android:viewportHeight="110">
+    <path android:fillColor="#FFF3EDF7" android:pathData="M24,0h62a24,24 0,0 1,24 24v62a24,24 0,0 1,-24 24h-62a24,24 0,0 1,-24 -24v-62a24,24 0,0 1,24 -24z" />
+    <path android:fillColor="#FFEADDFF" android:pathData="M29,45a26,26 0,1 0,52 0a26,26 0,1 0,-52 0z" />
+    <group android:scaleX="1.4" android:scaleY="1.4" android:translateX="38.2" android:translateY="28.2">
+        <path android:fillColor="#FF6750A4" android:pathData="M12,21.35l-1.45,-1.32C5.4,15.36 2,12.28 2,8.5 2,5.42 4.42,3 7.5,3c1.74,0 3.41,0.81 4.5,2.09C13.09,3.81 14.76,3 16.5,3 19.58,3 22,5.42 22,8.5c0,3.78 -3.4,6.86 -8.55,11.54L12,21.35z" />
+    </group>
+    <path android:fillColor="#FFCAC4D0" android:pathData="M31,84h48a4,4 0,0 1,0 8h-48a4,4 0,0 1,0 -8z" />
+</vector>
