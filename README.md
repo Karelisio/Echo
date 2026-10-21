@@ -176,7 +176,7 @@ Tous les corps sont en JSON (4 Ko max). Les routes authentifiées attendent les 
 
 Erreurs : `{ ok: false, error, message }` avec notamment `code_invalid` (404), `code_used` (409), `unauthorized` (401), `pair_not_found` (404), `not_paired` (409), `rate_limited` (429), `partner_unreachable` (410, jeton FCM de l'autre périmé), `fcm_error` (502), `server_misconfigured` (500).
 
-Codes et paires en attente expirent après **10 minutes** (TTL KV). Les messages FCM sont des messages *data* en priorité `HIGH`, TTL 15 min, regroupés (`collapse_key`) si le téléphone est hors ligne : seul le dernier écho est livré, et un écho arrivé plus de 5 minutes après son envoi est enregistré sans faire vibrer.
+Codes et paires en attente expirent après **10 minutes** ; le téléphone B peut rejouer la saisie du même code (réponse perdue) sans casser le lien. Chaque téléphone a son propre enregistrement KV, si bien qu’une copie KV pas encore propagée ne peut pas écraser les données de l’autre. Les messages FCM sont des messages *data* en priorité `HIGH`, TTL 15 min, regroupés (`collapse_key`) si le téléphone est hors ligne : seul le dernier écho est livré, et un écho arrivé plus de 5 minutes après son envoi est enregistré sans faire vibrer.
 
 ## Sécurité et vie privée
 
