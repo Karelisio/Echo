@@ -44,7 +44,14 @@ class EchoSender(
             val current = settings.current()
             relay.ping(credentials, current.emoji, current.pattern.id)
             sent = true
-            history.record(EchoDirection.SENT, current.emoji, current.pattern.id, now)
+            try {
+                history.record(EchoDirection.SENT, current.emoji, current.pattern.id, now)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // L'écho est parti : un historique incomplet ne doit pas le transformer en échec.
+                Log.w(TAG, "Écho envoyé mais non enregistré dans l'historique", e)
+            }
             return Result.Sent(now)
         } catch (e: RelayException) {
             // Le relais a refusé pour cause de débit : on garde le délai d'attente.

@@ -95,8 +95,8 @@ class AppContainer(
      */
     fun observeWidgetInputs() {
         appScope.launch {
-            combine(pairingStore.state, settings.settings) { pairing, settings ->
-                (pairing is PairingState.Paired) to settings.emoji
+            combine(pairingStore.state, settings.settings) { pairing, current ->
+                (pairing is PairingState.Paired) to current.emoji
             }
                 .distinctUntilChanged()
                 .drop(1)
