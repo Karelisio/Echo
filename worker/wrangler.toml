@@ -2,6 +2,8 @@ name = "echo-relay"
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
 workers_dev = true
+# Pas d’URL de préversion : seule l’adresse workers.dev principale est publique.
+preview_urls = false
 
 # Stockage des paires et du jeton OAuth en cache. Sans « id », wrangler crée l'espace KV
 # au premier déploiement puis le réutilise (provisionnement automatique).
