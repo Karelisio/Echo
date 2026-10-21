@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="echo_violet">#FF6750A4</color>
+    <color name="echo_background">#FFFEF7FF</color>
+    <!-- Aperçu du widget dans le sélecteur (remplacées par les couleurs dynamiques sur Android 12+) -->
+    <color name="widget_preview_background">#FFF3EDF7</color>
+    <color name="widget_preview_circle">#FFEADDFF</color>
+    <color name="widget_preview_text">#FF1D1B20</color>
+</resources>

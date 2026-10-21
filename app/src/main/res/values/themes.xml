@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Thème de fenêtre minimal : tout le reste est dessiné par Compose (Material 3 Expressive). -->
+    <style name="Theme.Echo" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/echo_background</item>
+    </style>
+</resources>

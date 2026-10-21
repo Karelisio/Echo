@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icône de notification / widget : le motif de l'icône d'appli, recadré. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="60"
+    android:viewportHeight="60">
+    <group android:translateX="-24" android:translateY="-24">
+        <path android:fillColor="#FFFFFFFF" android:pathData="M26,54a5,5 0,1 0,10 0a5,5 0,1 0,-10 0z" />
+        <path android:pathData="M37.428,46.34A10,10 0,0 1,37.428 61.66" android:strokeWidth="4.5" android:strokeColor="#FFFFFFFF" android:strokeLineCap="round" />
+        <path android:pathData="M42.249,40.594A17.5,17.5 0,0 1,42.249 67.406" android:strokeWidth="4.5" android:strokeColor="#FFFFFFFF" android:strokeLineCap="round" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M72,54a5,5 0,1 0,10 0a5,5 0,1 0,-10 0z" />
+        <path android:pathData="M70.572,61.66A10,10 0,0 1,70.572 46.34" android:strokeWidth="4.5" android:strokeColor="#FFFFFFFF" android:strokeLineCap="round" />
+        <path android:pathData="M65.751,67.406A17.5,17.5 0,0 1,65.751 40.594" android:strokeWidth="4.5" android:strokeColor="#FFFFFFFF" android:strokeLineCap="round" />
+    </group>
+</vector>

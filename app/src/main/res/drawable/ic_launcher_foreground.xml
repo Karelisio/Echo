@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Deux ondes concentriques qui se répondent : chaque point émet deux arcs vers l'autre. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#FFFFFFFF" android:pathData="M26,54a5,5 0,1 0,10 0a5,5 0,1 0,-10 0z" />
+    <path android:pathData="M37.428,46.34A10,10 0,0 1,37.428 61.66" android:strokeWidth="4.5" android:strokeColor="#FFFFFFFF" android:strokeLineCap="round" />
+    <path android:pathData="M42.249,40.594A17.5,17.5 0,0 1,42.249 67.406" android:strokeWidth="4.5" android:strokeColor="#FFFFFFFF" android:strokeLineCap="round" />
+    <path android:fillColor="#FFFFD8E4" android:pathData="M72,54a5,5 0,1 0,10 0a5,5 0,1 0,-10 0z" />
+    <path android:pathData="M70.572,61.66A10,10 0,0 1,70.572 46.34" android:strokeWidth="4.5" android:strokeColor="#FFFFD8E4" android:strokeLineCap="round" />
+    <path android:pathData="M65.751,67.406A17.5,17.5 0,0 1,65.751 40.594" android:strokeWidth="4.5" android:strokeColor="#FFFFD8E4" android:strokeLineCap="round" />
+</vector>
