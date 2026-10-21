@@ -1,0 +1,135 @@
+name: Build
+
+# Tests sur toutes les branches ; APK signé sur main, sur les tags v* et en lancement manuel.
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  worker:
+    name: Relais Cloudflare (tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+
+  android-tests:
+    name: Appli Android (tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      - name: SDK Android 37
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-37.0" > /dev/null
+      # Les tests n'utilisent pas Firebase : une configuration factice suffit (aucun secret requis).
+      - name: google-services.json factice
+        run: |
+          cat > app/google-services.json <<'JSON'
+          {
+            "project_info": { "project_number": "123456789012", "project_id": "echo-ci", "storage_bucket": "echo-ci.appspot.com" },
+            "client": [{
+              "client_info": {
+                "mobilesdk_app_id": "1:123456789012:android:0123456789abcdef",
+                "android_client_info": { "package_name": "com.karelisio.echo" }
+              },
+              "oauth_client": [],
+              "api_key": [{ "current_key": "AIzaSyD-ci-only-not-a-real-key-000000000" }],
+              "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+            }],
+            "configuration_version": "1"
+          }
+          JSON
+      - name: Tests unitaires et Robolectric
+        run: ./gradlew :app:testDebugUnitTest
+      - name: Rapport de tests
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rapports-tests
+          path: app/build/reports/tests/
+
+  release-apk:
+    name: APK release signé
+    needs: [worker, android-tests]
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    env:
+      GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      ECHO_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      ECHO_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      ECHO_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      # Variable de dépôt (ou secret) : URL publique du Worker, ex. https://echo-relay.xxx.workers.dev
+      ECHO_RELAY_URL: ${{ vars.ECHO_RELAY_URL || secrets.ECHO_RELAY_URL }}
+    steps:
+      - name: Vérifier la configuration
+        run: |
+          missing=""
+          for name in GOOGLE_SERVICES_JSON_BASE64 KEYSTORE_BASE64 ECHO_KEYSTORE_PASSWORD ECHO_KEY_ALIAS ECHO_KEY_PASSWORD ECHO_RELAY_URL; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Configuration manquante :$missing (voir le README, section « Secrets GitHub »)"
+            exit 1
+          fi
+          case "$ECHO_RELAY_URL" in
+            https://*) ;;
+            *) echo "::error::ECHO_RELAY_URL doit commencer par https://"; exit 1 ;;
+          esac
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      - name: SDK Android 37
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-37.0" > /dev/null
+      - name: Restaurer google-services.json et le keystore
+        run: |
+          echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > app/google-services.json
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/echo-release.jks"
+          echo "ECHO_KEYSTORE_FILE=$RUNNER_TEMP/echo-release.jks" >> "$GITHUB_ENV"
+      - name: Version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then name="${GITHUB_REF_NAME#v}"; else name="1.0.${GITHUB_RUN_NUMBER}"; fi
+          echo "ECHO_VERSION_NAME=$name" >> "$GITHUB_ENV"
+          echo "ECHO_VERSION_CODE=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+      - name: Construire l'APK release (R8 + signature)
+        run: ./gradlew :app:assembleRelease
+      - name: Vérifier la signature
+        run: |
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner"
+          "$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk
+          mv app/build/outputs/apk/release/app-release.apk "echo-${ECHO_VERSION_NAME}.apk"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: echo-${{ env.ECHO_VERSION_NAME }}
+          path: echo-*.apk
+          if-no-files-found: error
+      - name: Effacer les secrets du runner
+        if: always()
+        run: rm -f app/google-services.json "$RUNNER_TEMP/echo-release.jks"
