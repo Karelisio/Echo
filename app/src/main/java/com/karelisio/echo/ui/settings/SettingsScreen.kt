@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -33,7 +34,9 @@ import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.LinkOff
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Science
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material.icons.rounded.Cloud
@@ -46,6 +49,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -83,6 +87,9 @@ import com.karelisio.echo.ui.components.BigButton
 import com.karelisio.echo.ui.components.SectionHeader
 import com.karelisio.echo.ui.components.ShapedIcon
 import com.karelisio.echo.ui.components.rememberNow
+import com.karelisio.echo.ui.update.UpdateCard
+import com.karelisio.echo.update.UpdateState
+import com.karelisio.echo.update.offer
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -100,6 +107,7 @@ fun SettingsScreen(outerPadding: PaddingValues, expandGuide: Boolean, onGuideExp
     val system by viewModel.system.collectAsStateWithLifecycle()
     val test by viewModel.test.collectAsStateWithLifecycle()
     val unpair by viewModel.unpair.collectAsStateWithLifecycle()
+    val update by container.updates.state.collectAsStateWithLifecycle()
 
     LifecycleResumeEffect(Unit) {
         viewModel.refreshSystem()
@@ -175,7 +183,12 @@ fun SettingsScreen(outerPadding: PaddingValues, expandGuide: Boolean, onGuideExp
             }
             item {
                 SectionHeader(stringResource(R.string.settings_section_about))
-                AboutGroup(relayHost = viewModel.relayHost)
+                UpdateCard(Modifier.padding(bottom = 8.dp))
+                AboutGroup(
+                    relayHost = viewModel.relayHost,
+                    update = update.takeIf { container.updates.isEnabled },
+                    onCheckUpdates = container.updates::checkNow,
+                )
             }
         }
     }
@@ -505,16 +518,45 @@ private fun GuideStep(title: Int, text: Int, onOpen: (() -> Unit)?) {
     }
 }
 
+/** [update] : `null` si les mises à jour in-app sont désactivées (build sans URL). */
 @Composable
-private fun AboutGroup(relayHost: String) {
+private fun AboutGroup(relayHost: String, update: UpdateState?, onCheckUpdates: () -> Unit) {
+    val count = if (update != null) 3 else 2
+    var index = 0
     Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
         SegmentedListItem(
-            shapes = ListItemDefaults.segmentedShapes(0, 2),
+            shapes = ListItemDefaults.segmentedShapes(index++, count),
             leadingContent = { Icon(Icons.Rounded.Info, contentDescription = null) },
             supportingContent = { Text(BuildConfig.VERSION_NAME) },
         ) { Text(stringResource(R.string.settings_version)) }
+        if (update != null) {
+            val offer = update.offer
+            SegmentedListItem(
+                onClick = onCheckUpdates,
+                shapes = ListItemDefaults.segmentedShapes(index++, count),
+                leadingContent = { Icon(Icons.Rounded.SystemUpdate, contentDescription = null) },
+                supportingContent = {
+                    Text(
+                        when {
+                            offer != null -> stringResource(R.string.settings_updates_available, offer.versionName)
+                            update == UpdateState.Checking -> stringResource(R.string.settings_updates_checking)
+                            update == UpdateState.UpToDate -> stringResource(R.string.settings_updates_up_to_date)
+                            update == UpdateState.CheckFailed -> stringResource(R.string.settings_updates_failed)
+                            else -> stringResource(R.string.settings_updates_idle)
+                        },
+                    )
+                },
+                trailingContent = {
+                    if (update == UpdateState.Checking) {
+                        LoadingIndicator(Modifier.size(32.dp))
+                    } else {
+                        Icon(Icons.Rounded.Refresh, contentDescription = null)
+                    }
+                },
+            ) { Text(stringResource(R.string.settings_updates)) }
+        }
         SegmentedListItem(
-            shapes = ListItemDefaults.segmentedShapes(1, 2),
+            shapes = ListItemDefaults.segmentedShapes(index, count),
             leadingContent = { Icon(Icons.Rounded.Cloud, contentDescription = null) },
             supportingContent = { Text(relayHost) },
         ) { Text(stringResource(R.string.settings_relay)) }

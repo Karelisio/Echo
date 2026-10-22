@@ -1,11 +1,13 @@
 # Écho 💜
 
 Appli Android pour deux personnes : **un tap sur le widget fait vibrer le téléphone de l'autre**.
-Pas de compte, pas de message : juste un « je pense à toi ».
+Pas de compte : juste un « je pense à toi », avec si tu veux une petite phrase.
 
 - **Widget** d'écran d'accueil (Jetpack Glance) : un tap envoie un écho ; il affiche le dernier écho reçu (« 💜 il y a 5 min »). Couleurs dynamiques, coins arrondis du système, redimensionnable de 1×1 à 4×2.
 - **Appli** (Jetpack Compose, Material 3 Expressive) : choix de l'emoji et du motif de vibration (court, double, cœur battant, long, vague, ronron), historique local des échos envoyés et reçus (Room), réglages.
+- **Phrase personnalisée** : « Ton message » (120 caractères, suggestions en un tap) part avec chaque écho et s'affiche dans la notification de l'autre ; vide, l'autre voit « Quelqu’un pense à toi ». Elle apparaît aussi dans l'historique, sur l'accueil et sur le grand widget.
 - **Réception** : message FCM « data » en priorité haute → vibration immédiate avec le motif reçu (même appli fermée), notification discrète avec bouton « Renvoyer un écho », mise à jour du widget.
+- **Mises à jour in-app** : l'appli consulte la dernière release GitHub (au lancement, puis une fois par jour avec une notification), télécharge l'APK, vérifie taille et SHA-256, puis l'installe via `PackageInstaller` après confirmation d'Android.
 - **Silencieux / Ne pas déranger** : vibration jouée directement par l'appli avec l'usage `ALARM`, canal de notification dédié avec `setBypassDnd(true)`, accès « Ne pas déranger » demandé au premier lancement (écran explicatif), interrupteur « Vibrer même en Ne pas déranger » (activé par défaut), guide de dépannage Honor / MagicOS.
 - **Anti-spam** : 5 s minimum entre deux envois (appli), limitation de débit par paire (relais).
 - **Appairage sans compte** : le téléphone A affiche un code à 6 caractères, le téléphone B le saisit. Le relais lie les deux jetons FCM et remet à chacun un `pairId` + un secret (stockés en EncryptedSharedPreferences). Désappairage depuis les réglages.
@@ -19,7 +21,7 @@ Pas de compte, pas de message : juste un « je pense à toi ».
 |---|---|
 | `app/` | Appli Android (Kotlin, Compose, Glance, Room, DataStore, WorkManager, Firebase Messaging) |
 | `worker/` | Relais Cloudflare Workers + KV (TypeScript, wrangler) |
-| `.github/workflows/build.yml` | Tests du relais et de l'appli, puis APK release signé en artefact |
+| `.github/workflows/build.yml` | Tests du relais et de l'appli, APK release signé en artefact, release GitHub (APK + `update.json`) |
 
 ---
 
@@ -115,6 +117,16 @@ Installez l'APK sur les deux téléphones (autoriser « Installer des applis inc
 
 Faites l'appairage avec les deux téléphones côte à côte : le stockage KV de Cloudflare peut mettre jusqu'à une minute à se propager entre régions. Si un code est refusé alors qu'il vient d'être créé, patientez une minute et réessayez.
 
+### 8. Publier une version (mises à jour in-app)
+
+Deux façons, au choix :
+- **Tag** : `git tag -a v1.2.0 -m "Nouveautés…" && git push origin v1.2.0` (le message du tag devient les notes de version) ;
+- **Lancement manuel** : *Actions → Build → Run workflow*, champ **version** (`1.2.0`) et **notes**.
+
+Le workflow construit l'APK signé puis crée la **release GitHub** `v1.2.0` avec deux fichiers : `echo-1.2.0.apk` et `update.json` (`versionCode`, `versionName`, `apkUrl`, `sha256`, `size`, `notes`). L'appli lit `https://github.com/<dépôt>/releases/latest/download/update.json` (le dépôt doit être public) : elle propose la mise à jour sur l'accueil et dans *Réglages → À propos*, et envoie une notification par nouvelle version. Le `versionCode` est le numéro d'exécution du workflow, toujours croissant.
+
+Android installe la mise à jour seulement si l'APK est signé avec **la même clé** que l'appli installée : gardez `echo-release.jks` précieusement. La première fois, Android demande d'autoriser Écho à « installer des applis inconnues ». Sur Honor / MagicOS, le **mode de protection** (« Mode pur ») peut demander une confirmation supplémentaire. La version 1.0.0 ne contient pas encore l'outil de mise à jour : installez la 1.1.0 à la main une fois, depuis la page des releases.
+
 ---
 
 ## Honor / MagicOS (et Huawei)
@@ -143,7 +155,7 @@ echo "echo.relayUrl=https://echo-relay.xxx.workers.dev" >> local.properties
 ./gradlew :app:testDebugUnitTest      # tests unitaires + Robolectric (écrans et widget)
 ```
 
-L'URL du relais peut aussi venir de `-PechoRelayUrl=…` ou de la variable d'environnement `ECHO_RELAY_URL`. Pour signer une release en local, définir `ECHO_KEYSTORE_FILE`, `ECHO_KEYSTORE_PASSWORD`, `ECHO_KEY_ALIAS` et `ECHO_KEY_PASSWORD` puis `./gradlew :app:assembleRelease`.
+L'URL du relais peut aussi venir de `-PechoRelayUrl=…` ou de la variable d'environnement `ECHO_RELAY_URL`. Celle des mises à jour (`update.json`) vaut par défaut la dernière release de `Karelisio/Echo` ; elle se change avec `echo.updateUrl`, `-PechoUpdateUrl=…` ou `ECHO_UPDATE_URL` (vide = mises à jour désactivées). Pour signer une release en local, définir `ECHO_KEYSTORE_FILE`, `ECHO_KEYSTORE_PASSWORD`, `ECHO_KEY_ALIAS` et `ECHO_KEY_PASSWORD` puis `./gradlew :app:assembleRelease`.
 
 Relais :
 
@@ -170,9 +182,11 @@ Tous les corps sont en JSON (4 Ko max). Les routes authentifiées attendent les 
 | `POST /pair/join` | — (limitée par IP) | `{ code, token }` | `200 { pairId, secret, role: "b" }` + message FCM `paired` au téléphone A |
 | `POST /pair/status` | oui | `{}` | `{ paired, role, pairedAt }` |
 | `POST /token/update` | oui | `{ token }` | `{ ok: true }` |
-| `POST /ping` | oui (limitée par paire) | `{ emoji, pattern }` ou `{ target: "self", delay }` | `{ sentAt }` |
+| `POST /ping` | oui (limitée par paire) | `{ emoji, pattern, text? }` ou `{ target: "self", delay }` | `{ sentAt }` |
 | `POST /pair/leave` | oui | `{}` | `{ ok: true }` + message FCM `unpaired` à l'autre |
 | `GET /health` | — | | `{ ok: true }` |
+
+`text` (facultatif, 200 caractères max, une seule ligne) est transmis tel quel à l'autre téléphone, qui l'affiche dans la notification ; absent ou vide, il affiche sa phrase par défaut.
 
 Erreurs : `{ ok: false, error, message }` avec notamment `code_invalid` (404), `code_used` (409), `unauthorized` (401), `pair_not_found` (404), `not_paired` (409), `rate_limited` (429), `partner_unreachable` (410, jeton FCM de l'autre périmé), `fcm_error` (502), `server_misconfigured` (500).
 
@@ -184,7 +198,8 @@ Codes et paires en attente expirent après **10 minutes** ; le téléphone B peu
 - Codes de 6 caractères sur un alphabet de 32 symboles (sans 0/O ni 1/I), valables 10 min, tentatives limitées à 10/min par IP.
 - Côté téléphone, `pairId` et secret sont dans des **EncryptedSharedPreferences** (clé du Keystore Android) ; sauvegarde et transfert d'appareil désactivés.
 - Aucune clé ni `google-services.json` dans le dépôt : secrets GitHub (APK) et `wrangler secret` (relais).
-- Pas de compte, pas d'analytics. Le contenu d'un écho (emoji, motif, heure) transite par Cloudflare et Google (FCM) en TLS, mais n'est pas chiffré de bout en bout.
+- Pas de compte, pas d'analytics. Le contenu d'un écho (emoji, motif, phrase, heure) transite par Cloudflare et Google (FCM) en TLS, mais n'est pas chiffré de bout en bout ; le relais ne stocke pas les phrases.
+- Mises à jour : APK téléchargé en HTTPS depuis les releases GitHub, taille et SHA-256 vérifiés, nom de paquet et `versionCode` contrôlés ; Android refuse toute mise à jour signée avec une autre clé.
 
 ## Limites connues
 

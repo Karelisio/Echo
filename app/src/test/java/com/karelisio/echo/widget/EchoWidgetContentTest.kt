@@ -24,11 +24,19 @@ class EchoWidgetContentTest {
         paired: Boolean = true,
         status: WidgetStatus = WidgetStatus.Idle,
         lastReceivedAgoMs: Long? = 7 * 60_000L,
+        message: String? = null,
     ) = WidgetUiState(
         paired = paired,
         emoji = "🫶",
         lastReceived = lastReceivedAgoMs?.let {
-            EchoEvent(id = 1, direction = EchoDirection.RECEIVED, emoji = "💜", pattern = "heartbeat", timestamp = now - it)
+            EchoEvent(
+                id = 1,
+                direction = EchoDirection.RECEIVED,
+                emoji = "💜",
+                pattern = "heartbeat",
+                timestamp = now - it,
+                message = message,
+            )
         },
         status = status,
         now = now,
@@ -51,6 +59,14 @@ class EchoWidgetContentTest {
         provideComposable { WidgetContent(state(lastReceivedAgoMs = 23 * 60_000L)) }
         onNode(hasText("Dernier écho reçu")).assertExists()
         onNode(hasText("💜 il y a 20 min")).assertExists()
+    }
+
+    @Test
+    fun grandFormatAfficheLaPhraseRecue() = runGlanceAppWidgetUnitTest {
+        setContext(context)
+        setAppWidgetSize(EchoWidget.LARGE)
+        provideComposable { WidgetContent(state(message = "Tu me manques")) }
+        onNode(hasText("Tu me manques")).assertExists()
     }
 
     @Test

@@ -198,7 +198,12 @@ private fun HistoryItem(event: EchoEvent, index: Int, count: Int, modifier: Modi
                 size = 44.dp,
             )
         },
-        supportingContent = { Text(stringResource(VibrationPattern.fromId(event.pattern).label)) },
+        supportingContent = {
+            Column {
+                event.message?.let { Text(stringResource(R.string.quoted, it), color = MaterialTheme.colorScheme.onSurface) }
+                Text(stringResource(VibrationPattern.fromId(event.pattern).label))
+            }
+        },
         trailingContent = { Text(time, style = MaterialTheme.typography.labelLarge) },
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

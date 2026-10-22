@@ -15,18 +15,24 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.LinkOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialShapes
@@ -51,9 +57,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,12 +72,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.karelisio.echo.R
 import com.karelisio.echo.appContainer
 import com.karelisio.echo.data.history.EchoEvent
+import com.karelisio.echo.echo.EchoMessage
 import com.karelisio.echo.echo.EchoSender
 import com.karelisio.echo.ui.components.EchoSendButton
 import com.karelisio.echo.ui.components.PatternGlyph
 import com.karelisio.echo.ui.components.SectionHeader
 import com.karelisio.echo.ui.components.ShapedEmoji
 import com.karelisio.echo.ui.components.rememberNow
+import com.karelisio.echo.ui.update.UpdateCard
 import com.karelisio.echo.util.RelativeTime
 import com.karelisio.echo.vibration.VibrationPattern
 
@@ -106,7 +118,11 @@ fun HomeScreen(outerPadding: PaddingValues) {
 
     val partner = state.settings.partnerName
     Scaffold(
-        modifier = Modifier.padding(outerPadding).nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier
+            .padding(outerPadding)
+            // La barre de navigation est déjà sous le clavier : seul le surplus est ajouté (imePadding).
+            .consumeWindowInsets(outerPadding)
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
                 title = { Text(stringResource(R.string.home_title)) },
@@ -122,6 +138,7 @@ fun HomeScreen(outerPadding: PaddingValues) {
         contentWindowInsets = WindowInsets(0),
     ) { padding ->
         LazyColumn(
+            modifier = Modifier.imePadding(),
             contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
@@ -129,6 +146,7 @@ fun HomeScreen(outerPadding: PaddingValues) {
                 bottom = 24.dp,
             ),
         ) {
+            item { UpdateCard(Modifier.padding(bottom = 8.dp)) }
             if (state.pairMissing) {
                 item { PairMissingCard(onRelink = viewModel::forgetPairing) }
             }
@@ -157,6 +175,13 @@ fun HomeScreen(outerPadding: PaddingValues) {
                     onSelect = viewModel::selectEmoji,
                     onCustom = { showEmojiDialog = true },
                 )
+            }
+            item {
+                SectionHeader(
+                    title = stringResource(R.string.home_message),
+                    subtitle = stringResource(R.string.home_message_desc),
+                )
+                MessageEditor(value = viewModel.messageDraft, onValueChange = viewModel::onMessageChange)
             }
             item {
                 SectionHeader(
@@ -231,6 +256,13 @@ private fun LastEchoCard(lastReceived: EchoEvent?, lastSent: EchoEvent?, now: Lo
                         ?: stringResource(R.string.home_no_echo_yet),
                     style = MaterialTheme.typography.titleLargeEmphasized,
                 )
+                lastReceived?.message?.let {
+                    Text(
+                        stringResource(R.string.quoted, it),
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 3,
+                    )
+                }
                 if (lastSent != null) {
                     Text(
                         stringResource(R.string.home_last_sent, RelativeTime.format(resources, lastSent.timestamp, now)),
@@ -261,6 +293,57 @@ private fun EmojiPicker(selected: String, onSelect: (String) -> Unit, onCustom: 
             Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text(stringResource(R.string.home_custom_emoji))
+        }
+    }
+}
+
+/** Phrase affichée dans la notification de l'autre, avec quelques suggestions en un tap. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MessageEditor(value: String?, onValueChange: (String) -> Unit) {
+    val focusManager = LocalFocusManager.current
+    val text = value.orEmpty()
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = onValueChange,
+            enabled = value != null,
+            placeholder = { Text(stringResource(R.string.home_message_placeholder)) },
+            trailingIcon = if (text.isNotEmpty()) {
+                {
+                    IconButton(onClick = { onValueChange("") }) {
+                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.home_message_clear))
+                    }
+                }
+            } else {
+                null
+            },
+            supportingText = {
+                Text(
+                    stringResource(R.string.home_message_count, text.length, EchoMessage.MAX_LENGTH),
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            maxLines = 3,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+            shape = MaterialTheme.shapes.large,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            stringArrayResource(R.array.message_suggestions).forEach { suggestion ->
+                ToggleButton(
+                    checked = text.trim() == suggestion,
+                    onCheckedChange = { checked ->
+                        onValueChange(if (checked) suggestion else "")
+                        focusManager.clearFocus()
+                    },
+                    enabled = value != null,
+                ) {
+                    Text(suggestion)
+                }
+            }
         }
     }
 }

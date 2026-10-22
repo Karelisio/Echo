@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <!-- Appli installée hors Play Store : demande directe d'exclusion de l'optimisation batterie -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Mises à jour in-app depuis les releases GitHub -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:name=".EchoApp"
@@ -54,6 +56,10 @@
 
         <receiver
             android:name=".notification.ReplyReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".update.InstallResultReceiver"
             android:exported="false" />
 
         <!-- Canal utilisé si FCM affiche lui-même une notification (messages « notification ») -->

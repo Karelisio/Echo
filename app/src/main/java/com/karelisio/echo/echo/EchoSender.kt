@@ -42,10 +42,11 @@ class EchoSender(
         var sent = false
         try {
             val current = settings.current()
-            relay.ping(credentials, current.emoji, current.pattern.id)
+            val message = EchoMessage.clean(current.message)
+            relay.ping(credentials, current.emoji, current.pattern.id, message)
             sent = true
             try {
-                history.record(EchoDirection.SENT, current.emoji, current.pattern.id, now)
+                history.record(EchoDirection.SENT, current.emoji, current.pattern.id, now, message)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

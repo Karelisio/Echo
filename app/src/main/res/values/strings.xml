@@ -8,6 +8,7 @@
     <string name="action_back">Retour</string>
     <string name="action_save">Enregistrer</string>
     <string name="action_open">Ouvrir</string>
+    <string name="quoted">«&#160;%1$s&#160;»</string>
 
     <!-- Canaux et notifications -->
     <string name="channel_echoes">Échos reçus</string>
@@ -20,6 +21,8 @@
     <string name="notif_action_reply">Renvoyer un écho</string>
     <string name="notif_test_title">Écho de test reçu ✓</string>
     <string name="notif_test_text">La réception fonctionne. Si ton téléphone n’a pas vibré, touche ici pour voir comment le régler.</string>
+    <string name="notif_update_title">Mise à jour disponible</string>
+    <string name="notif_update_text">Écho %1$s est prête&#160;: touche pour l’installer.</string>
     <string name="notif_unpaired_title">Lien rompu</string>
     <string name="notif_unpaired_text">L’autre téléphone s’est désappairé. Ouvre Écho pour vous relier à nouveau.</string>
 
@@ -123,6 +126,19 @@
     <string name="home_custom_emoji_label">Emoji</string>
     <string name="home_pair_missing">Le relais ne connaît plus ce lien : l’autre téléphone s’est peut-être désappairé.</string>
     <string name="home_pair_missing_action">Relier</string>
+    <string name="home_message">Ton message</string>
+    <string name="home_message_desc">La phrase affichée dans la notification de l’autre</string>
+    <string name="home_message_placeholder">Par défaut : «&#160;Quelqu’un pense à toi&#160;»</string>
+    <string name="home_message_clear">Effacer le message</string>
+    <string name="home_message_count">%1$d / %2$d</string>
+    <string-array name="message_suggestions">
+        <item>Je pense à toi</item>
+        <item>Tu me manques</item>
+        <item>Je t’aime</item>
+        <item>Bonne nuit 🌙</item>
+        <item>Courage 💪</item>
+        <item>J’arrive</item>
+    </string-array>
 
     <!-- Motifs de vibration -->
     <string name="pattern_short">Court</string>
@@ -207,6 +223,30 @@
     <string name="settings_section_about">À propos</string>
     <string name="settings_version">Version</string>
     <string name="settings_relay">Relais</string>
+    <string name="settings_updates">Mises à jour</string>
+    <string name="settings_updates_idle">Touche pour rechercher une nouvelle version</string>
+    <string name="settings_updates_checking">Recherche…</string>
+    <string name="settings_updates_up_to_date">Écho est à jour</string>
+    <string name="settings_updates_failed">Impossible de vérifier, touche pour réessayer</string>
+    <string name="settings_updates_available">Version %1$s disponible</string>
+
+    <!-- Mises à jour in-app -->
+    <string name="update_title">Écho %1$s est disponible</string>
+    <string name="update_current">Version installée&#160;: %1$s</string>
+    <string name="update_action">Mettre à jour</string>
+    <string name="update_retry">Réessayer</string>
+    <string name="update_downloading">Téléchargement… %1$d&#160;%%</string>
+    <string name="update_installing">Confirme l’installation dans la fenêtre d’Android.</string>
+    <string name="update_installing_again">Relancer l’installation</string>
+    <string name="update_error_download">Téléchargement impossible. Vérifie ta connexion.</string>
+    <string name="update_error_integrity">Le fichier téléchargé est invalide.</string>
+    <string name="update_error_conflict">Cette version n’est pas signée avec la même clé que l’appli installée&#160;: désinstalle Écho puis installe-la depuis la page des releases GitHub.</string>
+    <string name="update_error_storage">Pas assez d’espace de stockage.</string>
+    <string name="update_error_blocked">Installation bloquée par le téléphone (mode de protection ou politique de sécurité).</string>
+    <string name="update_error_install">L’installation a échoué.</string>
+    <string name="update_permission_title">Autoriser les mises à jour</string>
+    <string name="update_permission_text">Android demande ton accord pour qu’Écho installe ses propres mises à jour. Active «&#160;Autoriser cette source&#160;» dans la page qui va s’ouvrir, puis reviens ici.</string>
+    <string name="update_permission_action">Ouvrir les réglages</string>
 
     <!-- Guide Honor / MagicOS -->
     <string name="guide_title">Mon téléphone ne vibre pas</string>

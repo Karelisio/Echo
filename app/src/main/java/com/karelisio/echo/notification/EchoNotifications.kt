@@ -49,7 +49,8 @@ class EchoNotifications(private val context: Context) {
 
     fun echoChannelBypassesDnd(): Boolean = system.getNotificationChannel(CHANNEL_ECHOES)?.canBypassDnd() == true
 
-    fun showEcho(emoji: String, partnerName: String, at: Long) {
+    /** [message] : phrase choisie par l'autre, sinon la phrase par défaut. */
+    fun showEcho(emoji: String, partnerName: String, at: Long, message: String?) {
         val title = if (partnerName.isBlank()) {
             context.getString(R.string.notif_echo_title, emoji)
         } else {
@@ -60,9 +61,11 @@ class EchoNotifications(private val context: Context) {
             context.getString(R.string.notif_action_reply),
             ReplyReceiver.pendingIntent(context),
         ).build()
+        val text = message ?: context.getString(R.string.notif_echo_text)
         val notification = baseBuilder(CHANNEL_ECHOES)
             .setContentTitle(title)
-            .setContentText(context.getString(R.string.notif_echo_text))
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setWhen(at)
             .setShowWhen(true)
             .setCategory(NotificationCompat.CATEGORY_SOCIAL)
@@ -90,6 +93,15 @@ class EchoNotifications(private val context: Context) {
             .build()
         compat.cancel(ID_ECHO)
         post(ID_REPLY, notification)
+    }
+
+    /** Nouvelle version : la notification ouvre l'accueil, où la carte de mise à jour l'attend. */
+    fun showUpdateAvailable(versionName: String) {
+        val notification = baseBuilder(CHANNEL_INFO)
+            .setContentTitle(context.getString(R.string.notif_update_title))
+            .setContentText(context.getString(R.string.notif_update_text, versionName))
+            .build()
+        post(ID_UPDATE, notification)
     }
 
     fun showUnpaired() {
@@ -134,6 +146,7 @@ class EchoNotifications(private val context: Context) {
         private const val ID_TEST = 2
         private const val ID_REPLY = 3
         private const val ID_INFO = 4
+        private const val ID_UPDATE = 5
         private const val REPLY_FEEDBACK_TIMEOUT_MS = 4_000L
     }
 }

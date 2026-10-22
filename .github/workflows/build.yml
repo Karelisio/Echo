@@ -1,12 +1,23 @@
 name: Build
 
 # Tests sur toutes les branches ; APK signé sur main, sur les tags v* et en lancement manuel.
+# Release GitHub (APK + update.json pour les mises à jour in-app) : tag vX.Y.Z, ou lancement
+# manuel avec une version.
 on:
   push:
     branches: ["**"]
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version à publier en release (ex. 1.2.0) ; vide = simple APK en artefact"
+        required: false
+        default: ""
+      notes:
+        description: "Notes de version (affichées dans l’appli)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -77,6 +88,9 @@ jobs:
     needs: [worker, android-tests]
     if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    permissions:
+      # Création de la release GitHub.
+      contents: write
     env:
       GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
       KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -85,6 +99,8 @@ jobs:
       ECHO_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       # Variable de dépôt (ou secret) : URL publique du Worker, ex. https://echo-relay.xxx.workers.dev
       ECHO_RELAY_URL: ${{ vars.ECHO_RELAY_URL || secrets.ECHO_RELAY_URL }}
+      # Les mises à jour in-app suivent les releases de ce dépôt (fonctionne aussi pour un fork).
+      ECHO_UPDATE_URL: https://github.com/${{ github.repository }}/releases/latest/download/update.json
     steps:
       - name: Vérifier la configuration
         run: |
@@ -114,10 +130,26 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/echo-release.jks"
           echo "ECHO_KEYSTORE_FILE=$RUNNER_TEMP/echo-release.jks" >> "$GITHUB_ENV"
       - name: Version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          if [ "$GITHUB_REF_TYPE" = "tag" ]; then name="${GITHUB_REF_NAME#v}"; else name="1.0.${GITHUB_RUN_NUMBER}"; fi
+          publish=true
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            name="${GITHUB_REF_NAME#v}"
+          elif [ -n "$INPUT_VERSION" ]; then
+            name="${INPUT_VERSION#v}"
+          else
+            name="1.0.${GITHUB_RUN_NUMBER}"
+            publish=false
+          fi
+          if [ "$publish" = true ] && ! [[ "$name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version « $name » invalide : format attendu X.Y.Z"
+            exit 1
+          fi
+          # Le numéro de run ne fait que croître : chaque build peut mettre à jour le précédent.
           echo "ECHO_VERSION_NAME=$name" >> "$GITHUB_ENV"
           echo "ECHO_VERSION_CODE=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          echo "ECHO_PUBLISH=$publish" >> "$GITHUB_ENV"
       - name: Construire l'APK release (R8 + signature)
         run: ./gradlew :app:assembleRelease
       - name: Vérifier la signature
@@ -130,6 +162,37 @@ jobs:
           name: echo-${{ env.ECHO_VERSION_NAME }}
           path: echo-*.apk
           if-no-files-found: error
+      - name: Publier la release GitHub
+        if: env.ECHO_PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_NOTES: ${{ inputs.notes }}
+        run: |
+          tag="v$ECHO_VERSION_NAME"
+          apk="echo-$ECHO_VERSION_NAME.apk"
+          notes="$INPUT_NOTES"
+          if [ -z "$notes" ] && [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            # Message du tag annoté (git tag -a vX.Y.Z -m "…"), sans signature éventuelle.
+            notes="$(git tag -l --format='%(contents)' "$tag" | sed '/-----BEGIN PGP SIGNATURE-----/,$d')"
+          fi
+          # Lu par l'appli : versionCode, URL et empreinte de l'APK.
+          jq -n \
+            --argjson versionCode "$ECHO_VERSION_CODE" \
+            --arg versionName "$ECHO_VERSION_NAME" \
+            --arg apkUrl "https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$apk" \
+            --arg sha256 "$(sha256sum "$apk" | cut -d' ' -f1)" \
+            --argjson size "$(stat -c %s "$apk")" \
+            --arg notes "$notes" \
+            '{versionCode: $versionCode, versionName: $versionName, apkUrl: $apkUrl, sha256: $sha256, size: $size, notes: $notes}' \
+            > update.json
+          cat update.json
+          printf '%s\n' "${notes:-Écho $ECHO_VERSION_NAME}" > release-notes.md
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$tag" "$apk" update.json --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$tag" "$apk" update.json --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "Écho $ECHO_VERSION_NAME" --notes-file release-notes.md --latest
+          fi
       - name: Effacer les secrets du runner
         if: always()
         run: rm -f app/google-services.json "$RUNNER_TEMP/echo-release.jks"

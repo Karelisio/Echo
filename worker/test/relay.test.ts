@@ -388,6 +388,22 @@ describe("échos", () => {
     expect((await call("/ping", { emoji: "❤️‍🔥", pattern: "purr" }, a)).status).toBe(200);
   });
 
+  it("transmet la phrase de l'expéditeur, seulement si elle n'est pas vide", async () => {
+    const { a } = await pairPhones();
+    fcmCalls = [];
+    expect((await call("/ping", { emoji: "💜", text: "  Tu me manques 🌙 " }, a)).status).toBe(200);
+    expect(fcmCalls[0].data.text).toBe("Tu me manques 🌙");
+    expect((await call("/ping", { text: "   " }, a)).status).toBe(200);
+    expect((await call("/ping", { text: null }, a)).status).toBe(200);
+    expect(fcmCalls[1].data).not.toHaveProperty("text");
+    expect(fcmCalls[2].data).not.toHaveProperty("text");
+
+    expect((await call("/ping", { text: "x".repeat(201) }, a)).status).toBe(400);
+    expect((await call("/ping", { text: "ligne 1\nligne 2" }, a)).status).toBe(400);
+    expect((await call("/ping", { text: 42 }, a)).status).toBe(400);
+    expect(fcmCalls).toHaveLength(3);
+  });
+
   it("renvoie un écho de test à l'expéditeur, éventuellement différé", async () => {
     const { a } = await pairPhones();
     fcmCalls = [];
