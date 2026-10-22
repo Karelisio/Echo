@@ -61,6 +61,15 @@ class EchoNotifications(private val context: Context) {
             context.getString(R.string.notif_action_reply),
             ReplyReceiver.pendingIntent(context),
         ).build()
+        val answer = NotificationCompat.Action.Builder(
+            R.drawable.ic_stat_echo,
+            context.getString(R.string.notif_action_answer),
+            ReplyReceiver.textPendingIntent(context),
+        )
+            .addRemoteInput(ReplyReceiver.remoteInput(context))
+            .setAllowGeneratedReplies(false)
+            .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
+            .build()
         val text = message ?: context.getString(R.string.notif_echo_text)
         val notification = baseBuilder(CHANNEL_ECHOES)
             .setContentTitle(title)
@@ -69,6 +78,7 @@ class EchoNotifications(private val context: Context) {
             .setWhen(at)
             .setShowWhen(true)
             .setCategory(NotificationCompat.CATEGORY_SOCIAL)
+            .addAction(answer)
             .addAction(reply)
             .build()
         post(ID_ECHO, notification)
