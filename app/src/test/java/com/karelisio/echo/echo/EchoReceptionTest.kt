@@ -47,6 +47,11 @@ class EchoReceptionTest {
         val notification = shownNotification()
         assertEquals("🫶 Écho reçu", notification.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
         assertEquals("Tu me manques", notification.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
+        // Réponse directe : champ de saisie avec les suggestions, puis « Renvoyer un écho ».
+        val answer = notification.actions[0]
+        assertEquals("Répondre", answer.title.toString())
+        assertEquals("Je pense à toi", answer.remoteInputs.single().choices.first().toString())
+        assertEquals("Renvoyer un écho", notification.actions[1].title.toString())
 
         // Sans phrase (ancienne version de l'appli chez l'autre) : texte par défaut.
         container.receiver.onEcho(echo(null, sentAt = now))

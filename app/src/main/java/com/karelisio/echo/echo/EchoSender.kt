@@ -32,7 +32,8 @@ class EchoSender(
 
     enum class Error { Network, RateLimited, PartnerUnreachable, SelfUnreachable, PartnerNotReady, PairMissing, NotConfigured, Server }
 
-    suspend fun send(): Result {
+    /** [message] : phrase pour cet écho seulement (réponse depuis la notification), sinon celle des réglages. */
+    suspend fun send(message: String? = null): Result {
         val state = withContext(Dispatchers.IO) { store.ensureLoaded() }
         val credentials = (state as? PairingState.Paired)?.credentials ?: return Result.NotPaired
         val now = System.currentTimeMillis()
@@ -42,11 +43,11 @@ class EchoSender(
         var sent = false
         try {
             val current = settings.current()
-            val message = EchoMessage.clean(current.message)
-            relay.ping(credentials, current.emoji, current.pattern.id, message)
+            val text = EchoMessage.clean(message ?: current.message)
+            relay.ping(credentials, current.emoji, current.pattern.id, text)
             sent = true
             try {
-                history.record(EchoDirection.SENT, current.emoji, current.pattern.id, now, message)
+                history.record(EchoDirection.SENT, current.emoji, current.pattern.id, now, text)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

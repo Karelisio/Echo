@@ -19,6 +19,8 @@
     <string name="notif_echo_title_named">%1$s Écho de %2$s</string>
     <string name="notif_echo_text">Quelqu’un pense à toi</string>
     <string name="notif_action_reply">Renvoyer un écho</string>
+    <string name="notif_action_answer">Répondre</string>
+    <string name="notif_reply_hint">Ta phrase…</string>
     <string name="notif_test_title">Écho de test reçu ✓</string>
     <string name="notif_test_text">La réception fonctionne. Si ton téléphone n’a pas vibré, touche ici pour voir comment le régler.</string>
     <string name="notif_update_title">Mise à jour disponible</string>
